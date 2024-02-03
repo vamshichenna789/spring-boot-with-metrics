@@ -1,0 +1,20 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: springboot-ingress
+  namespace: production
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx
+  rules:
+  - http:
+      paths:
+      - path: /prodapp
+        pathType: Prefix
+        backend:
+          service:
+            name: springboot-production-service  # Replace with your actual service name
+            port:
+              number: 8080  # Update to the desired port
+

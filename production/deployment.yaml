@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: springboot-prod
+  namespace: production
+  labels:
+    app: springboot
+    env: prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: springboot
+      env: prod
+  template:
+    metadata:
+      labels:
+        app: springboot
+        env: prod
+    spec:
+      containers:
+      - name: springboot
+        image: us-central1-docker.pkg.dev/devops-practice-411411/springboot/metricsapp:latest
+        ports:
+        - containerPort: 8080
+

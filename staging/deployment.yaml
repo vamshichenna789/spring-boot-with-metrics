@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: springboot-staging
+  namespace: staging
+  labels:
+    app: springboot
+    env: staging
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: springboot
+      env: staging
+  template:
+    metadata:
+      labels:
+        app: springboot
+        env: staging
+    spec:
+      containers:
+      - name: springboot
+        image: us-central1-docker.pkg.dev/devops-practice-411411/springboot/metricsapp:latest
+        ports:
+        - containerPort: 8080
+

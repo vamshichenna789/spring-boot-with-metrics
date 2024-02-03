@@ -1,0 +1,89 @@
+pipeline {
+    agent {
+        kubernetes {
+            // Configure pod template for running steps in containers
+            yaml """
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+  - name: maven
+    image: maven:3.8.6-jdk-11  # Adjust as needed
+    command:
+    - cat
+    tty: true
+  - name: docker
+    image: docker:20.10.17  # Adjust as needed
+    command:
+    - cat
+    tty: true
+    volumeMounts:
+    - name: dockersock
+      mountPath: /var/run/docker.sock
+  volumes:
+  - name: dockersock
+    hostPath:
+      path: /var/run/docker.sock
+"""
+        }
+    }
+
+    environment {
+        // Set environment variables for credentials and project details
+        GCP_SERVICE_ACCOUNT_KEY = credentials('gcp-service-account-key')
+        GCP_PROJECT = 'your-gcp-project-id'
+        GCP_REGION = 'your-gcp-region'
+        GCP_ZONE = 'your-gcp-zone'
+        ARTIFACT_REGISTRY_URL = 'gcr.io/your-gcp-project-id'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                container('maven') {
+                    checkout scm
+                }
+            }
+        }
+
+        stage('Build') {
+            steps {
+                container('maven') {
+                    sh 'mvn clean package'
+                }
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                container('docker') {
+                    sh 'docker build -t ${ARTIFACT_REGISTRY_URL}/your-image-name:${BUILD_NUMBER} .'
+                }
+            }
+        }
+
+        stage('Push Image to Artifact Registry') {
+            steps {
+                container('docker') {
+                    withCredentials([file(credentialsId: 'gcp-service-account-key', variable: 'GCP_KEY')]) {
+                        sh 'gcloud auth activate-service-account --key-file=${GCP_KEY}'
+                        sh 'docker push ${ARTIFACT_REGISTRY_URL}/your-image-name:${BUILD_NUMBER}'
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to GKE') {
+            steps {
+                container('docker') {
+                    withCredentials([file(credentialsId: 'gcp-service-account-key', variable: 'GCP_KEY')]) {
+                        sh 'gcloud auth activate-service-account --key-file=${GCP_KEY}'
+                        sh 'gcloud container clusters get-credentials your-cluster-name --region=${GCP_REGION} --zone=${GCP_ZONE}'
+                        sh 'kubectl apply -f deployment.yaml'  # Assuming deployment.yaml is in your source code repo
+                    }
+                }
+            }
+        }
+    }
+}
+
